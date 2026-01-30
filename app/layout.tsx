@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import {
   Geist, Geist_Mono, Outfit, Bricolage_Grotesque, Instrument_Serif
- } from "next/font/google";
+} from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
-import Nav from "@/components/nav/page";
+import Nav from "@/components/landing/nav/page";
 import { auth, signIn, signOut } from "@/auth";
+import { DEFAULT_AFTER_SIGN_IN } from "@/lib/routes";
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -13,7 +14,7 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
- 
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -42,7 +43,7 @@ export default async function RootLayout({
   const session = await auth();
   const handleSignIn = async () => {
     "use server";
-    await signIn("github", { redirectTo: "/" });
+    await signIn("github", { redirectTo: DEFAULT_AFTER_SIGN_IN });
   };
   const handleSignOut = async () => {
     "use server";
@@ -52,6 +53,7 @@ export default async function RootLayout({
     <html lang="en" className={outfit.variable}>
       <body
         className={`${geistSans.variable} ${geistMono.variable}   ${instrumentSerif.variable} ${bricolageGrotesque.variable} antialiased`}
+        suppressHydrationWarning
       >
         <ThemeProvider
           attribute="class"
