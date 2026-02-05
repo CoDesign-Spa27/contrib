@@ -8,7 +8,7 @@ export default auth((req) => {
 
 	// Protect dashboard (and any future protected routes): redirect to sign-in with callbackUrl
 	if (isProtectedPath(pathname) && !isLoggedIn) {
-		const signInUrl = new URL("/api/auth/signin", req.nextUrl.origin);
+		const signInUrl = new URL("/sign-in", req.nextUrl.origin);
 		signInUrl.searchParams.set("callbackUrl", pathname);
 		return NextResponse.redirect(signInUrl);
 	}

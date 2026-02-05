@@ -1,6 +1,6 @@
 import { Octokit } from "octokit";
 
-const MAX_COMMITS = 500;
+const MAX_COMMITS = 1000;
 const PER_PAGE = 100;
 const COMMITS_FOR_AI = 80;
 
@@ -13,7 +13,7 @@ export type CommitListItem = {
 
 export type HardStats = {
   totalCommits: number;
-  featuresShipped: number;
+  changesShipped: number;
   activeDays: number;
   mergeCommits: number;
   topFileAreas: { path: string; count: number }[];
@@ -26,15 +26,6 @@ function parseRepoInput(repoInput: string): { owner: string; repo: string } {
   const [owner, repo] = trimmed.split("/").filter(Boolean);
   if (!owner || !repo) throw new Error("Repository must be in form owner/repo");
   return { owner, repo };
-}
-
-function isFeatureCommit(message: string): boolean {
-  const firstLine = message.split("\n")[0].toLowerCase();
-  return (
-    firstLine.startsWith("feat:") ||
-    firstLine.startsWith("feature:") ||
-    firstLine.startsWith("feat(")
-  );
 }
 
 function isMergeCommit(message: string): boolean {
@@ -101,14 +92,18 @@ export async function fetchCommits(
 
   const commitsForStats = allCommits.slice(0, MAX_COMMITS);
   const totalCommits = commitsForStats.length;
-  const featuresShipped = commitsForStats.filter((c) => isFeatureCommit(c.message)).length;
+  // Count every commit as shipped (every message = one change shipped)
+  const changesShipped = totalCommits;
   const mergeCommits = commitsForStats.filter((c) => isMergeCommit(c.message)).length;
   const activeDays = new Set(commitsForStats.map((c) => c.date).filter(Boolean)).size;
 
   const commitsForAi = allCommits.slice(0, COMMITS_FOR_AI);
-  const compressedForAi = commitsForAi.map(
-    (c) => `[${c.date}] ${c.message.split("\n")[0].slice(0, 120)}`
-  );
+  const compressedForAi = commitsForAi.map((c) => {
+    const lines = c.message.split("\n").map((l) => l.trim()).filter(Boolean);
+    const subject = (lines[0] ?? "").slice(0, 220);
+    const body = lines.length > 1 ? lines.slice(1).join(" ").slice(0, 200) : "";
+    return body ? `[${c.date}] ${subject}\n  > ${body}` : `[${c.date}] ${subject}`;
+  });
 
   const topFileAreas: { path: string; count: number }[] = [];
   try {
@@ -128,7 +123,7 @@ export async function fetchCommits(
 
   const stats: HardStats = {
     totalCommits,
-    featuresShipped,
+    changesShipped,
     activeDays,
     mergeCommits,
     topFileAreas,
@@ -145,4 +140,31 @@ export async function getBranches(
   const { owner, repo } = parseRepoInput(repoInput);
   const { data } = await octokit.rest.repos.listBranches({ owner, repo });
   return data.map((b) => ({ name: b.name }));
+}
+
+export type GitHubUser = {
+  login: string;
+  name: string | null;
+  avatar_url: string;
+  html_url: string;
 };
+
+export async function fetchUserByUsername(
+  token: string,
+  username: string
+): Promise<GitHubUser | null> {
+  try {
+    const octokit = new Octokit({ auth: token });
+    const { data } = await octokit.rest.users.getByUsername({
+      username: username.trim(),
+    });
+    return {
+      login: data.login,
+      name: data.name ?? null,
+      avatar_url: data.avatar_url ?? "",
+      html_url: data.html_url ?? `https://github.com/${data.login}`,
+    };
+  } catch {
+    return null;
+  }
+}

@@ -7,7 +7,7 @@
 export const PROTECTED_PATHS = ["/dashbaord", "/dashboard"] as const;
 
 /** Paths that authenticated users should be redirected away from (e.g. to app) */
-export const GUEST_ONLY_PATHS = ["/"] as const;
+export const GUEST_ONLY_PATHS = ["/", "/sign-in"] as const;
 
 export function isProtectedPath(pathname: string): boolean {
 	return PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

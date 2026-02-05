@@ -23,6 +23,7 @@ export interface NavProps {
     rightContent?: React.ReactNode;
     onSignIn?: () => void;
     onSignOut?: () => void;
+    signInHref?: string;
 }
 
 export default function Nav({
@@ -34,6 +35,7 @@ export default function Nav({
     rightContent,
     onSignIn,
     onSignOut,
+    signInHref = "/sign-in",
 }: NavProps) {
     return (
         <header
@@ -76,10 +78,19 @@ export default function Nav({
                                     </Button>
                                 </>
                             ) : (
-                                <Button type="button" size="sm" className="gap-2 text-white" onClick={onSignIn}>
-                                    <Github className="size-4" />
-                                    Sign in
-                                </Button>
+                                onSignIn ? (
+                                    <Button type="button" size="sm" className="gap-2 text-white" onClick={onSignIn}>
+                                        <Github className="size-4" />
+                                        Sign in
+                                    </Button>
+                                ) : (
+                                    <Button asChild type="button" size="sm" className="gap-2 text-white">
+                                        <Link href={signInHref}>
+                                            <Github className="size-4" />
+                                            Sign in
+                                        </Link>
+                                    </Button>
+                                )
                             )}
                         </>
                     )}

@@ -1,7 +1,7 @@
 "use server";
 
 import { groq } from "@/lib/ai";
-import { fetchCommits, type HardStats } from "@/lib/github";
+import { fetchCommits, fetchUserByUsername, type HardStats, type GitHubUser } from "@/lib/github";
 import { generateObject } from "ai";
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ const AnalysisSchema = z.object({
   detailed_summary: z
     .string()
     .describe(
-      "A detailed analytical summary: 2-4 paragraphs covering what was built, technical themes, patterns, and overall contribution. Be specific and reference actual work from the commits."
+      "3-5 paragraphs. Every claim must be grounded in the commit list or file areas: cite or paraphrase specific commit messages. No vague filler. Structure: (1) who and scope; (2) concrete work from commits; (3) technical themes/patterns; (4) overall impact."
     ),
   impact_score: z.number().min(1).max(10).describe("1-10 based on complexity and impact."),
   key_areas: z.array(z.string()).describe("Specific modules/areas worked on, e.g. 'Authentication', 'Payment Gateway'."),
@@ -28,7 +28,14 @@ const AnalysisSchema = z.object({
 export type AnalysisResult = z.infer<typeof AnalysisSchema>;
 
 export type AnalyzeResult =
-  | { success: true; stats: HardStats; analysis: AnalysisResult; commitsPerDay: Record<string, number> }
+  | {
+      success: true;
+      stats: HardStats;
+      analysis: AnalysisResult;
+      commitsPerDay: Record<string, number>;
+      user: GitHubUser | null;
+      inputs: { repo: string; branch: string; username: string };
+    }
   | { success: false; error: string };
 
 export async function analyzeCommits(
@@ -73,35 +80,42 @@ export async function analyzeCommits(
     return { success: false, error: "No commits found for this user on the selected branch." };
   }
 
+  const user = await fetchUserByUsername(token, username);
+
   const commitsPerDay: Record<string, number> = {};
   for (const c of commits) {
     if (c.date) commitsPerDay[c.date] = (commitsPerDay[c.date] ?? 0) + 1;
   }
 
   const promptContext = compressedForAi.join("\n");
+  const fileAreasBlob =
+    stats.topFileAreas.length > 0
+      ? `\nFile areas touched (path prefix, commit count):\n${stats.topFileAreas.map((a) => `  ${a.path} (${a.count})`).join("\n")}\n`
+      : "";
 
   try {
     // Use a model that supports json_schema structured output (see https://console.groq.com/docs/structured-outputs#supported-models)
     const { object } = await generateObject({
       model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
       schema: AnalysisSchema,
-      prompt: `You are a Senior Engineering Manager writing a detailed contribution review. I will provide a list of git commits for one developer.
+      prompt: `You are a Senior Engineering Manager writing a contribution review. Use ONLY the commit list and file areas below. Ground every statement in this data.
 
-Your goals:
-1. Write a DETAILED summary (2-4 paragraphs): what was built, technical themes, patterns (e.g. "repeated focus on X"), and the overall nature of their contribution. Be specific—reference concrete work from the commits. Do not be vague.
-2. List key_areas: modules/domains they worked in (e.g. 'Authentication', 'API layer', 'UI components').
-3. List important_things: 5-12 items. Each item has:
-   - title: short label (e.g. "New login flow", "Payment error handling")
-   - description: 2-3 sentences on what was done and why it matters
-   Focus on features shipped, refactors, fixes, and notable changes. Skip trivial typo-only commits unless they are part of a larger theme.
-4. If commit messages are too vague to infer real work, say so in detailed_summary and use empty key_areas and fewer important_things.
+RULES FOR detailed_summary:
+- Write 3-5 paragraphs. Every claim must be backed by at least one commit message or file area—cite or paraphrase (e.g. "commits like 'Add auth middleware' and 'Fix login redirect' show..." or "work in src/auth/ and src/api/ indicates...").
+- Do not use vague filler ("various improvements", "multiple changes"). Name concrete work.
+- Structure: (1) Developer and scope (repo/branch, time range from dates). (2) Concrete work: list specific changes from the commits. (3) Technical themes and patterns. (4) Overall impact.
+- If messages are brief or vague, infer from file paths and still be specific (e.g. "Contributions in components/ and lib/ suggest UI and shared logic work.").
+
+RULES FOR key_areas and important_things:
+- key_areas: derive from commit messages and file paths (e.g. 'Authentication', 'API layer', 'UI components').
+- important_things: 5-12 items. Each title and description must reference specific commits or file areas. No generic bullets.
 
 Developer: ${username}
-Commits (chronological, most recent last):
-
+Commits (reverse chronological, newest first; each line may have subject and "> body" preview):
 ${promptContext}
+${fileAreasBlob}
 
-Return JSON: detailed_summary (2-4 paragraphs), impact_score (1-10), key_areas (array of strings), important_things (array of { title, description }).`,
+Return JSON: detailed_summary (3-5 paragraphs, grounded in commits/file areas), impact_score (1-10), key_areas (array of strings), important_things (array of { title, description }).`,
     });
 
     return {
@@ -109,6 +123,8 @@ Return JSON: detailed_summary (2-4 paragraphs), impact_score (1-10), key_areas (
       stats,
       analysis: object,
       commitsPerDay,
+      user,
+      inputs: { repo: repoInput.trim(), branch, username: username.trim() },
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

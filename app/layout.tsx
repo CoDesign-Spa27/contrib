@@ -5,8 +5,7 @@ import {
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
 import Nav from "@/components/landing/nav/page";
-import { auth, signIn, signOut } from "@/auth";
-import { DEFAULT_AFTER_SIGN_IN } from "@/lib/routes";
+import { auth, signOut } from "@/auth";
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -41,10 +40,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
-  const handleSignIn = async () => {
-    "use server";
-    await signIn("github", { redirectTo: DEFAULT_AFTER_SIGN_IN });
-  };
   const handleSignOut = async () => {
     "use server";
     await signOut();
@@ -61,7 +56,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav session={session} onSignIn={handleSignIn} onSignOut={handleSignOut} />
+          <Nav session={session} onSignOut={handleSignOut} />
           {children}
         </ThemeProvider>
       </body>

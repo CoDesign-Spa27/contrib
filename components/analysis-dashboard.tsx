@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { analyzeCommits, type AnalyzeResult } from "@/actions/analyze";
 import { fetchBranches } from "@/actions/github";
 import { Button } from "@/components/ui/button";
@@ -21,38 +22,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, GitBranch, User, FolderGit2, BarChart3, Sparkles } from "lucide-react";
+import { Loader2, GitBranch, User, FolderGit2, BarChart3, Sparkles, ExternalLink } from "lucide-react";
 import { motion } from "motion/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function StatsCard({
   title,
   value,
-  icon: Icon,
-  accent = "primary",
 }: {
   title: string;
   value: string | number;
   icon?: React.ComponentType<{ className?: string }>;
   accent?: "primary" | "chart-1" | "chart-2" | "chart-3";
 }) {
-  const accentBorder = {
-    primary: "border-l-primary",
-    "chart-1": "border-l-chart-1",
-    "chart-2": "border-l-chart-2",
-    "chart-3": "border-l-chart-3",
-  }[accent];
-
+ 
   return (
-    <Card className={`overflow-hidden border-l-4 ${accentBorder} bg-card/50`}>
-      <CardHeader className="pb-1 pt-4">
+    <Card className={`overflow-hidden bg-card/50`}>
+      <CardHeader className="">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <CardTitle className="font-instrument-serif text-xl font-bold uppercase tracking-wider text-muted-foreground">
             {title}
           </CardTitle>
-          {Icon && <Icon className="size-4 text-muted-foreground/80" />}
         </div>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className="pb-4 font-bricolage-grotesque">
         <div className="text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
       </CardContent>
     </Card>
@@ -67,33 +65,41 @@ function ActivityChart({ data }: { data: Record<string, number> }) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium">
-          <BarChart3 className="size-4 text-primary" />
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="size-4 text-primary " />
           Commits per day
         </CardTitle>
         <CardDescription>Last 28 days</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end gap-1 h-36">
-          {slice.map(([date, count], i) => {
-            const pct = (count / max) * 100;
-            return (
-              <motion.div
-                key={date}
-                initial={{ height: 0, opacity: 0.6 }}
-                animate={{ height: `${Math.max(pct, 4)}%`, opacity: 1 }}
-                transition={{ delay: i * 0.02, duration: 0.35, ease: "easeOut" }}
-                className="flex-1 min-w-0 flex flex-col justify-end group"
-                title={`${date}: ${count} commit${count !== 1 ? "s" : ""}`}
-              >
-                <div
-                  className="w-full rounded-t-md bg-linear-to-t from-chart-4 to-chart-2 transition-all hover:from-chart-3 hover:to-chart-1 min-h-[6px]"
-                  style={{ height: "100%" }}
-                />
-              </motion.div>
-            );
-          })}
-        </div>
+        <TooltipProvider delayDuration={200} skipDelayDuration={100}>
+          <div className="flex items-end gap-1 h-36">
+            {slice.map(([date, count], i) => {
+              const pct = (count / max) * 100;
+              const label = `${date}: ${count} commit${count !== 1 ? "s" : ""}`;
+              return (
+                <Tooltip key={date}>
+                  <TooltipTrigger asChild>
+                    <motion.div
+                      initial={{ height: 0, opacity: 0.6 }}
+                      animate={{ height: `${Math.max(pct, 4)}%`, opacity: 1 }}
+                      transition={{ delay: i * 0.02, duration: 0.35, ease: "easeOut" }}
+                      className="flex-1 min-w-0 flex flex-col justify-end group cursor-default"
+                    >
+                      <div
+                        className="w-full rounded-t-md bg-linear-to-t from-chart-4 to-chart-2 transition-all hover:from-chart-3 hover:to-chart-1 min-h-[6px]"
+                        style={{ height: "100%" }}
+                      />
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="font-normal">
+                    {label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
         <div className="mt-3 flex justify-between text-[10px] text-muted-foreground">
           <span>{slice[0]?.[0] ?? "—"}</span>
           <span>{slice[slice.length - 1]?.[0] ?? "—"}</span>
@@ -110,7 +116,7 @@ function FileAreasChart({ areas }: { areas: { path: string; count: number }[] })
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Top file areas</CardTitle>
+        <CardTitle>Top file areas</CardTitle>
         <CardDescription>By commit count</CardDescription>
       </CardHeader>
       <CardContent>
@@ -127,7 +133,7 @@ function FileAreasChart({ areas }: { areas: { path: string; count: number }[] })
                 <span className="truncate text-muted-foreground" title={path}>
                   {path}
                 </span>
-                <span className="tabular-nums font-medium">{count}</span>
+                <span className="tabular-nums font-bold">{count}</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <motion.div
@@ -180,18 +186,18 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
   const canAnalyze = !!repo.trim() && !!username.trim() && !!accessToken;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-2">
       {/* Section: Input form */}
-      <section className="space-y-4">
+      <section className="space-y-2">
         <div className="flex items-center gap-2">
           <Sparkles className="size-5 text-primary" />
           <h2 className="text-lg font-semibold tracking-tight">Analyze contributions</h2>
         </div>
         <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-12">
+          <CardContent className="">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
               <div className="space-y-2 lg:col-span-4">
-                <Label htmlFor="repo" className="flex items-center gap-1.5 text-xs font-medium">
+                <Label htmlFor="repo" className="flex items-center gap-1.5 font-bold text-base">
                   <FolderGit2 className="size-3.5" />
                   Repository
                 </Label>
@@ -201,11 +207,11 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
                   value={repo}
                   onChange={(e) => setRepo(e.target.value)}
                   onBlur={loadBranches}
-                  className="h-10"
+              
                 />
               </div>
               <div className="space-y-2 lg:col-span-3">
-                <Label htmlFor="branch" className="flex items-center gap-1.5 text-xs font-medium">
+            <Label htmlFor="branch" className="flex items-center gap-1.5 text-base font-bold">
                   <GitBranch className="size-3.5" />
                   Branch
                 </Label>
@@ -214,7 +220,7 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
                   onValueChange={setBranch}
                   disabled={branchLoading || branches.length === 0}
                 >
-                  <SelectTrigger id="branch" className="h-10 w-full">
+                  <SelectTrigger id="branch" className="w-full">
                     <SelectValue placeholder={branchLoading ? "Loading…" : "Select branch"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -227,7 +233,7 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
                 </Select>
               </div>
               <div className="space-y-2 lg:col-span-3">
-                <Label htmlFor="username" className="flex items-center gap-1.5 text-xs font-medium">
+                <Label htmlFor="username" className="flex items-center gap-1.5 text-base font-bold">
                   <User className="size-3.5" />
                   GitHub username
                 </Label>
@@ -236,14 +242,13 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
                   placeholder="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="h-10"
                 />
               </div>
               <div className="flex items-end lg:col-span-2">
                 <Button
                   onClick={handleAnalyze}
                   disabled={!canAnalyze || isPending}
-                  className="h-10 w-full lg:w-auto"
+                  className="w-full lg:w-auto"
                 >
                   {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                   {isPending ? "Analyzing…" : "Generate report"}
@@ -267,10 +272,69 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="space-y-8"
+          className="space-y-2"
         >
-          {/* Stats row: 4-column grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Contributor & input details card */}
+          <Card className="overflow-hidden border-border/50 bg-card/60 font-bricolage-grotesque">
+            <CardContent className="p-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6 px-6 py-0">
+                <div className="flex items-center gap-4 shrink-0">
+                  {result.user?.avatar_url ? (
+                    <div className="relative size-16 rounded-full overflow-hidden ring-2 ring-primary/20 bg-muted">
+                      <Image
+                        src={result.user.avatar_url}
+                        alt={`${result.user.login} avatar`}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex size-16 sm:size-20 rounded-full bg-muted items-center justify-center ring-2 ring-primary/20">
+                      <User className="size-8 sm:size-10 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-bold text-xl font-instrument-serif truncate">
+                      {result.user?.name ?? result.inputs.username}
+                    </p>
+                    <a
+                      href={result.user?.html_url ?? `https://github.com/${result.inputs.username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1 mt-0.5"
+                    >
+                      @{result.inputs.username}
+                      <ExternalLink className="size-3.5 shrink-0" />
+                    </a>
+                  </div>
+                </div>
+                <div className="flex-1 grid gap-3 sm:grid-cols-2 min-w-0 border-t sm:border-t-0 sm:border-l border-border/60 pt-4 sm:pt-0 sm:pl-6">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <FolderGit2 className="size-3.5" />
+                      Repository
+                    </p>
+                    <a
+                      href={`https://github.com/${result.inputs.repo}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate block"
+                    >
+                      {result.inputs.repo}
+                    </a>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <GitBranch className="size-3.5" />
+                      Branch
+                    </p>
+                    <p className="text-sm font-medium text-foreground">{result.inputs.branch}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card> 
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Total commits"
               value={result.stats.totalCommits}
@@ -278,8 +342,8 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
               accent="primary"
             />
             <StatsCard
-              title="Features shipped"
-              value={result.stats.featuresShipped}
+              title="Changes shipped"
+              value={result.stats.changesShipped}
               icon={Sparkles}
               accent="chart-1"
             />
@@ -292,9 +356,9 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
           </div>
 
           {/* Main content: 12-col grid */}
-          <div className="grid gap-6 lg:grid-cols-12">
+          <div className="grid gap-2 lg:grid-cols-12">
             {/* Left: Summary + Important things (8 cols) */}
-            <div className="space-y-6 lg:col-span-8">
+            <div className="space-y-2 lg:col-span-8">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base font-semibold">Detailed summary</CardTitle>
@@ -341,7 +405,7 @@ export function AnalysisDashboard({ accessToken }: { accessToken: string | null 
             </div>
 
             {/* Right: Key areas, Activity chart, File areas (4 cols) */}
-            <div className="space-y-6 lg:col-span-4">
+            <div className="space-y-2 lg:col-span-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base font-semibold">Key areas</CardTitle>
