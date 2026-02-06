@@ -1,6 +1,6 @@
-import Hero from "@/components/landing/hero/page";
-import Features from "@/components/landing/features/page";
-import Footer from "@/components/landing/footer/page";
+import Hero from "@/components/landing/hero/hero";
+import Features from "@/components/landing/features/features";
+import Footer from "@/components/landing/footer/footer";
 
 export default async function HomePage() {
 

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GitBranch, BarChart3, Sparkles, Shield } from "lucide-react";
 
 export default function Features() {
@@ -63,9 +63,6 @@ export default function Features() {
                     </div>
                 </div>
             </section>
-
-           
-
 		</div>
 	)
 }

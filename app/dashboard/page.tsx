@@ -1,12 +1,12 @@
 import { auth } from "@/auth";
-import { AnalysisDashboard } from "@/components/analysis-dashboard";
+import { AnalysisDashboard } from "@/components/dashboard/analysis-dashboard";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
 	const session = await auth();
 
 	if (!session?.user) {
-		redirect("/sign-in?callbackUrl=/dashbaord");
+		redirect("/sign-in?callbackUrl=/dashboard");
 	}
 
 	const accessToken = session.accessToken ?? null;

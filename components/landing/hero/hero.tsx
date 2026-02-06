@@ -1,19 +1,23 @@
 "use client";
 import { Dithering } from '@paper-design/shaders-react';
-import { Button } from "../../ui/button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { FaSquareArrowUpRight } from "react-icons/fa6";
+import { useTheme } from "next-themes";
 
 export default function Hero() {
+	const { theme } = useTheme();
+	const isDark = theme === "dark";
 	const router = useRouter();
-	const handleVisualize = async () => {
-		router.push("/visualize");
+	const handleDashboard = () => {
+		router.push("/dashboard");
 	}
 	return (
-		<div className="relative w-full min-h-screen flex items-center justify-center pointer-events-none">
-			<div className="absolute inset-0 -z-10 opacity-30">
+		<div className="relative w-full min-h-screen flex items-center justify-center">
+			<div className="absolute inset-0 -z-10 dark:opacity-30 opacity-60 pointer-events-none">
 				<Dithering
 					style={{ width: '100%', height: '100%' }}
-					colorBack="#0D0A0A"
+					colorBack={isDark ? "#0D0A0A" : "#ffffff"}
 					colorFront="#00ffbf"
 					shape="warp"
 					type="4x4"
@@ -24,7 +28,7 @@ export default function Hero() {
 				/>
 			</div>
 
-			<div className="flex flex-col items-center justify-center">
+			<div className="flex flex-col items-center justify-center z-10 gap-4">
 				<span>
 					<p className="text-sm font-medium tracking-wide uppercase">
 						GitHub · AI · Insights
@@ -39,11 +43,11 @@ export default function Hero() {
 
 				<div>
 					<Button
-						onClick={handleVisualize}
-						className="text-white text-base"
+						onClick={handleDashboard}
+						className="text-white text-base gap-2 flex items-center justify-center"
 					>
-
 						Visualize
+						<FaSquareArrowUpRight className="size-4" />
 					</Button>
 				</div>
 			</div>

@@ -4,8 +4,9 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
-import Nav from "@/components/landing/nav/page";
+import Nav from "@/components/landing/nav/nav";
 import { auth, signOut } from "@/auth";
+import NextTopLoader from 'nextjs-toploader';
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -56,6 +57,9 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <NextTopLoader
+            color="#00ffbf"
+          />
           <Nav session={session} onSignOut={handleSignOut} />
           {children}
         </ThemeProvider>
