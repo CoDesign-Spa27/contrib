@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import Nav from "@/components/landing/nav/nav";
 import { auth, signOut } from "@/auth";
 import NextTopLoader from 'nextjs-toploader';
-
+import { Analytics } from "@vercel/analytics/next"
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' });
 
 const geistSans = Geist({
@@ -62,6 +62,7 @@ export default async function RootLayout({
           />
           <Nav session={session} onSignOut={handleSignOut} />
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
